@@ -1,0 +1,46 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/**'
+
+jobs:
+  build:
+    name: Build iOS App (.ipa)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Build Archive
+        run: |
+          xcodebuild archive \
+            -project ios/iLogia.xcodeproj \
+            -scheme iLogia \
+            -configuration Release \
+            -archivePath build/iLogia.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package Payload (.ipa)
+        run: |
+          mkdir -p build/Payload
+          cp -r build/iLogia.xcarchive/Products/Applications/iLogia.app build/Payload/
+          cd build
+          zip -r iLogia-unsigned.ipa Payload
+          cd ..
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iLogia-iOS-IPA
+          path: build/iLogia-unsigned.ipa
+          retention-days: 14
